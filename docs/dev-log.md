@@ -204,3 +204,34 @@
   - 会话内订单数据不刷新（query_orders 一次调用后被历史复用）；
   - 上下文无压缩，token 随轮次增长；
   - `submit` 未实现（M2）。
+
+## 2026-10-19 · M2：确认绑定 + submit + 幂等
+
+- **任务与验收条件**：确认只能由 CLI 创建；模型调用 submit 时由执行器注入确认；
+  提交前重校验快照/版本/规则；事务写入；重复提交幂等。
+  验收：93 个测试通过 + 真实端到端提交一次。
+- **本次关注的链路环节**：状态机设计 / 安全边界 / 事务与并发 / 真实运行。
+- **给 AI 的指令（摘要）**：先设计文档再实现；拆成 M2a 存储写层与 M2b 接线；
+  submit 全流程在 BEGIN IMMEDIATE 事务内；明确幂等与错误映射。
+- **AI 实际产出**：store 写层 + transaction + schema 版本 + submit 工具 +
+  Agent 的 pending_plan/confirmation + CLI 确认/取消 + 13 个新测试。
+- **我的判断**：接受，但修正了 6 处设计问题（见下）。
+- **发现的偏差与修正**：
+  1. confirmation 契约是嵌套 plan，存储是扁平列 → get_confirmation 在边界组装契约形状；
+  2. 只靠 UNIQUE 防重复 → 加 confirmation_id 外键；
+  3. transaction 遇隐式事务会失败 → 显式检查 in_transaction 并报错；
+  4. 旧库会被误标版本 → user_version=0 且已有表则拒绝；
+  5. status 变化会先触发 PLAN_CHANGED → 文档写明重新校验是防御性分支；
+  6. submit 的 STORE_UNAVAILABLE 实际不会返回 → 从错误表移除，统一 TRANSACTION_FAILED。
+- **独立验证**：
+  - `python3 -m unittest discover -s tests -t .` → `Ran 93 tests ... OK`
+  - 真实端到端 trace `docs/traces/20261019-192522-83529d.jsonl`：
+    `user → query_orders → preview(101,1) → assistant`，随后
+    `user(确认提交) → submit → assistant`；
+  - 库：return_requests 3 条（新增 9003），reserved_101=1，
+    confirmation status=used、request_id=9003。
+- **用时 / 轮次 / 返工**：约3h。
+- **局限与下次改进**：
+  - 并发测试只覆盖同进程两连接，未测多进程；
+  - 确认 10 分钟过期只在单测验证，未做真实等待；
+  - 会话内订单数据不刷新（query_orders 一次调用后被历史复用）。

@@ -121,8 +121,29 @@
 - **独立验证**：
   - `python3 -m unittest discover -s tests -t .` → `Ran 12 tests ... OK`
   - 烟测 `data/demo.db` → `rows: 7`，`line 101` 的 status/returnable 为 True
-- **用时 / 轮次 / 返工**：约【待你填】；1 轮实现 + 1 轮补测。
+- **用时 / 轮次 / 返工**：约 1h；1 轮实现 + 1 轮补测。
 - **局限与下次改进**：
   - `StoreError → system/STORE_UNAVAILABLE` 的工具层映射**尚未验证**（属 M1 第 4/5 步）；
   - `create_return_request` / `increment_reserved` / `transaction` 尚未实现（M2）；
   - `connect` 建父目录只用已存在的临时目录测过，未单测嵌套路径。
+
+## 2026-10-19 · M1：只读工具（query_orders / get_return_policy）
+
+- **任务与验收条件**：按 docs/tools.md 实现两个只读工具；
+  验收：19 个测试通过，含身份非法、存储故障、空结果、封装形状。
+- **本次关注的链路环节**：契约落地 / 错误分层 / 边界测试设计。
+- **给 AI 的指令（摘要）**：给出两个函数签名与返回结构；明确身份校验、
+  `StoreError → system/STORE_UNAVAILABLE`、空结果不算业务拒绝；要求覆盖六组场景。
+- **我给了哪些上下文，为什么**：只给 docs/tools.md 相关两节 + store 接口；
+  不给实现代码，避免它照抄。
+- **AI 实际产出**：`return_agent/tools.py`（48 行）、`tests/test_tools.py`（90 行，7 个测试）。
+- **我的判断**：接受。依据：身份校验统一；`StoreError` 映射到 `system/STORE_UNAVAILABLE`；
+  空结果返回 `ok=true, data=[]`；封装键集合有断言。
+- **发现的偏差**：无。
+- **我的措施**：无。
+- **独立验证**：`python3 -m unittest discover -s tests -t .` → `Ran 19 tests ... OK`
+- **用时 / 轮次 / 返工**：约【待你填】；1 轮。
+- **局限与下次改进**：
+  - `get_return_policy` 只断言了 version/window_days/summary，未断言其余规则字段（低风险，同源导入）；
+  - `preview` 未实现（M1 第 5 步）；`submit` 未实现（M2）；
+  - 工具尚未接入 Agent 循环，**模型可见 schema 尚未定义**。

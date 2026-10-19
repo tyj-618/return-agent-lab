@@ -49,4 +49,15 @@ TOOL_SCHEMAS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "submit_return_request",
+            "description": (
+                "提交当前已确认的退货方案；仅在用户明确说出「确认提交」且已有确认记录时调用；无参数。"
+                + IDENTITY_NOTE
+            ),
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
 ]

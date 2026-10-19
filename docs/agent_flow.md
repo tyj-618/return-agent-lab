@@ -1,5 +1,7 @@
 # Agent 流程（M1′）
 
+确认与提交流程见 docs/confirmation_flow.md。
+
 ## 1. 角色与边界
 
 | 谁 | 负责 |
@@ -7,17 +9,18 @@
 | Agent（模型） | 理解用户意图、判断是否澄清、选择工具、解释结果、给出方案 |
 | 代码 | 注入身份与连接、校验工具入参、业务判定（`validate_return_request`）、计划哈希、循环上限、trace |
 
-**模型不能做**：指定身份、跳过 `preview` 自行判断能否退货、声称"已提交"（`submit` 未实现）。
+**模型不能做**：指定身份、跳过 `preview` 自行判断能否退货、未调用 `submit_return_request` 就声称已提交。
 
-## 2. 模型可见工具（M1′ 只暴露 3 个）
+## 2. 模型可见工具（暴露 4 个）
 
 | 工具 | 参数 | 用途 |
 | --- | --- | --- |
 | `query_orders` | `{}` | 查当前身份下的订单行 |
 | `get_return_policy` | `{}` | 读取规则与版本号，用于解释 |
 | `preview_return_request` | `{order_line_id: integer, quantity: integer}` | 校验并生成申请方案 |
+| `submit_return_request` | `{}` | 提交当前已确认的方案；无参数，仅用户确认后可用 |
 
-`submit_return_request` **不暴露**（M2 实现）。身份与数据库连接由执行器注入，不进入 schema。
+身份与数据库连接由执行器注入，不进入 schema。
 
 ## 3. 循环
 
@@ -30,6 +33,8 @@
 4. 若有 `tool_calls` → 逐个执行，把结果作为 tool 消息追加，回到第 1 步。
 
 每批 `tool_calls` 必须全部得到结果消息（按 `tool_call_id` 一一对应），否则下一次模型调用的历史不合法。本次用户消息的工具预算（`MAX_TOOL_CALLS`）用尽时，同批剩余调用不执行，合成 `system / TOOL_BUDGET_EXCEEDED` 结果补齐，然后停止（`max_tool_calls`）。
+
+`pending_plan` 与 confirmation 由执行器持有；新 preview 成功会使旧确认失效。
 
 **停止原因**：`final_answer`、`max_turns`、`max_tool_calls`、`timeout`、`tool_errors`、`llm_error`。
 
@@ -88,6 +93,7 @@
 你是退货申请助手，辅助用户进行退货。信息不足时要先澄清，不要猜。
 不能自行判断是否能退货，必须调用 `preview_return_request`。
 在 `submit` 未实现前，不能声称"已提交"，也不要承诺未来会开通提交功能。
+当用户明确表示确认提交、且当前存在已确认的方案时，必须调用 submit_return_request；不得用文字代替工具调用，也不得在未调用工具的情况下声称已提交。
 只能使用工具返回的事实，不能编造订单。
 用户提到订单号或订单行号时，必须与工具返回的 order_id / order_line_id 精确匹配；不得截断、改写或补零。匹配不到就明确说没有找到，不要用其他订单替代。
 不要提及不存在的官方渠道、App 或客服；只描述当前系统实际具备的能力。
@@ -96,4 +102,4 @@
 
 ## 9. M1′ 不做
 
-`submit`、确认记录、幂等、UI、评测集、多轮记忆压缩。
+UI、评测集、多轮记忆压缩。

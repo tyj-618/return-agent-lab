@@ -1,7 +1,9 @@
 import json
 import time
+import uuid
+from datetime import datetime, timedelta, timezone
 
-from . import tools
+from . import store, tools
 from .llm import LLMError
 from .tool_schemas import TOOL_SCHEMAS
 
@@ -17,6 +19,8 @@ SYSTEM_PROMPT = (
     "你是退货申请助手，辅助用户进行退货。信息不足时要先澄清，不要猜。\n"
     "不能自行判断是否能退货，必须调用 `preview_return_request`。\n"
     "在 `submit` 未实现前，不能声称\"已提交\"，也不要承诺未来会开通提交功能。\n"
+    "当用户明确表示确认提交、且当前存在已确认的方案时，必须调用 submit_return_request；"
+    "不得用文字代替工具调用，也不得在未调用工具的情况下声称已提交。\n"
     "只能使用工具返回的事实，不能编造订单。\n"
     "用户提到订单号或订单行号时，必须与工具返回的 order_id / order_line_id 精确匹配；"
     "不得截断、改写或补零。匹配不到就明确说没有找到，不要用其他订单替代。\n"
@@ -25,7 +29,14 @@ SYSTEM_PROMPT = (
     "与用户交流使用中文，简洁明了。"
 )
 
-KNOWN_TOOLS = {"query_orders", "get_return_policy", "preview_return_request"}
+KNOWN_TOOLS = {
+    "query_orders", "get_return_policy", "preview_return_request", "submit_return_request",
+}
+
+CLEAR_CONFIRMATION_CODES = {
+    "PLAN_CHANGED", "POLICY_CHANGED", "CONFIRMATION_INVALID",
+    "CONFIRMATION_EXPIRED", "CONFIRMATION_MISMATCH",
+}
 
 
 def _system_error(code, message):
@@ -62,15 +73,58 @@ class Agent:
         self.tracer = tracer
         self.clock = clock
         self.messages = [{"role": "system", "content": system_prompt}]
+        self.pending_plan = None
+        self.confirmation_id = None
         self._step = 0
+        self._tools_used = []
 
     def _elapsed_ms(self, start):
         return int((self.clock() - start) * 1000)
+
+    def create_confirmation(self):
+        """把当前方案写成确认记录。无方案或写库失败时返回 None，不改动已有确认。"""
+        if not self.pending_plan:
+            return None
+        confirmation_id = "c-" + uuid.uuid4().hex[:12]
+        now = datetime.now(timezone.utc)
+        plan = self.pending_plan
+        try:
+            with store.transaction(self.conn):
+                store.create_confirmation(
+                    self.conn,
+                    confirmation_id=confirmation_id,
+                    user_id=self.current_user_id,
+                    order_line_id=plan["order_line_id"],
+                    quantity=plan["quantity"],
+                    policy_version=plan["policy_version"],
+                    plan_hash=plan["plan_hash"],
+                    created_at=now.isoformat(),
+                    expires_at=(now + timedelta(minutes=10)).isoformat(),
+                )
+        except store.StoreError:
+            return None
+        self.confirmation_id = confirmation_id
+        return confirmation_id
+
+    def cancel_pending(self):
+        if self.confirmation_id:
+            try:
+                with store.transaction(self.conn):
+                    store.update_confirmation_status(self.conn, self.confirmation_id, "invalid")
+            except store.StoreError:
+                pass
+        self.pending_plan = None
+        self.confirmation_id = None
+
+    def _clear_pending(self):
+        self.pending_plan = None
+        self.confirmation_id = None
 
     def run(self, user_message):
         self.messages.append({"role": "user", "content": user_message})
         self.tracer.user_message(self._step, user_message)
         self._started = self.clock()
+        self._tools_used = []
         turns = 0
         tool_call_count = 0
         consecutive_errors = 0
@@ -114,6 +168,8 @@ class Agent:
             })
 
             budget_exceeded = False
+            # 同一批里的第二次 submit 仍要看到本次确认，所以等整批执行完再清空。
+            clear_pending = False
             for call in tool_calls:
                 if tool_call_count >= self.max_tool_calls:
                     budget_exceeded = True
@@ -121,7 +177,8 @@ class Agent:
                     self._trace_tool(call, result, self.clock())
                 else:
                     tool_call_count += 1
-                    result = self._execute(call)
+                    result, should_clear = self._execute(call)
+                    clear_pending = clear_pending or should_clear
                     if not result["ok"] and result["error"]["category"] == "system":
                         consecutive_errors += 1
                     else:
@@ -131,6 +188,8 @@ class Agent:
                     "tool_call_id": call["id"],
                     "content": json.dumps(result, ensure_ascii=False),
                 })
+            if clear_pending:
+                self._clear_pending()
             if budget_exceeded:
                 return self._stop("max_tool_calls", turns, tool_call_count)
 
@@ -167,6 +226,8 @@ class Agent:
         args = call.get("arguments")
         started = self.clock()
 
+        self._tools_used.append(name)
+        should_clear = False
         if name not in KNOWN_TOOLS:
             result = _system_error("INVALID_TOOL_CALL", f"未知工具：{name}")
         elif call.get("parse_error") or not isinstance(args, dict):
@@ -175,6 +236,14 @@ class Agent:
             result = tools.query_orders(self.conn, self.current_user_id)
         elif name == "get_return_policy":
             result = tools.get_return_policy()
+        elif name == "submit_return_request":
+            result = tools.submit_return_request(
+                self.conn, self.current_user_id, self.confirmation_id
+            )
+            status = (result.get("data") or {}).get("status")
+            code = (result.get("error") or {}).get("code")
+            if (result["ok"] and status in ("created", "already_exists")) or code in CLEAR_CONFIRMATION_CODES:
+                should_clear = True
         else:
             result = tools.preview_return_request(
                 self.conn,
@@ -182,9 +251,23 @@ class Agent:
                 args.get("order_line_id"),
                 args.get("quantity"),
             )
+            if result["ok"] and self.confirmation_id:
+                try:
+                    with store.transaction(self.conn):
+                        store.update_confirmation_status(
+                            self.conn, self.confirmation_id, "invalid"
+                        )
+                except store.StoreError:
+                    result = _system_error("TRANSACTION_FAILED", "旧确认无法失效，方案未更新")
+                else:
+                    self.pending_plan = result["data"]["plan"]
+                    self.confirmation_id = None
+            elif result["ok"]:
+                self.pending_plan = result["data"]["plan"]
+                self.confirmation_id = None
 
         self._trace_tool(call, result, started)
-        return result
+        return result, should_clear
 
     def _trace_tool(self, call, result, started):
         error = result["error"] or {}
@@ -206,4 +289,5 @@ class Agent:
             "stop_reason": reason,
             "steps": turns,
             "tool_calls": tool_call_count,
+            "tools_used": list(self._tools_used),
         }

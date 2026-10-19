@@ -26,6 +26,7 @@ confirmation(status=pending, expires_at=now+10min,
    │
    ▼
 （清空 pending_plan）
+```
 
 ## 3. 失效规则
 
@@ -38,6 +39,8 @@ confirmation(status=pending, expires_at=now+10min,
 | `plan_hash` 不匹配 | `invalid` + `PLAN_CHANGED` |
 | `policy_version` 不匹配 | `invalid` + `POLICY_CHANGED` |
 | 重新校验不通过 | `invalid` + 对应 `reason_code` |
+
+由于 `plan_hash` 覆盖 `validate_return_request` 的全部输入，正常的订单状态变化会先得到 `PLAN_CHANGED`；重新校验是防御性检查，用于未来新增规则或哈希未覆盖的字段。
 
 ## 4. 幂等
 
@@ -55,6 +58,8 @@ confirmation(status=pending, expires_at=now+10min,
 
 任一步失败 → 全部回滚，不得留下有效申请或数量占用。
 
+submit 的全部检查与写入在同一事务内（BEGIN IMMEDIATE 提前取写锁），避免两个并发提交同时通过预检查。
+
 ## 6. 错误映射
 
 | 情况 | category | code |
@@ -67,7 +72,9 @@ confirmation(status=pending, expires_at=now+10min,
 | 方案快照变了 | business | `PLAN_CHANGED` |
 | 规则版本变了 | business | `POLICY_CHANGED` |
 | 重新校验不通过 | business | 对应 `reason_code` |
-| 写库失败/超时 | system | `TRANSACTION_FAILED` / `STORE_UNAVAILABLE` / `TIMEOUT` |
+| 写库失败/超时 | system | `TRANSACTION_FAILED` / `TIMEOUT` |
+
+submit 是写路径，存储故障统一归为 `TRANSACTION_FAILED`；`STORE_UNAVAILABLE` 只用于只读工具。
 
 ## 7. CLI 流程
 

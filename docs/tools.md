@@ -164,7 +164,7 @@ validate_return_request(current_user_id, order_line, quantity) -> dict
 - **错误**：
   - 输入非法（`category=input`）：无模型可见参数；但注入身份非法 → `INVALID_IDENTITY`。
   - 业务拒绝（`category=business`）：`NO_PENDING_CONFIRMATION`、`CONFIRMATION_MISMATCH`、`CONFIRMATION_INVALID`、`CONFIRMATION_EXPIRED`、`PLAN_CHANGED`、`POLICY_CHANGED`，以及重新校验返回的 `reason_code`。
-  - 系统失败（`category=system`）：`STORE_UNAVAILABLE`、`TIMEOUT`、`TRANSACTION_FAILED`。
+  - 系统失败（`category=system`）：`TIMEOUT`、`TRANSACTION_FAILED`。submit 是写路径，存储故障统一为 `TRANSACTION_FAILED`；`STORE_UNAVAILABLE` 仅用于只读工具。
 - **副作用**：有。创建申请记录、增加 `reserved_qty`；必须同事务；失败无残留；同一确认重复提交只产生一条申请。
 - **边界**：
   - 不接受模型自造的方案或确认；

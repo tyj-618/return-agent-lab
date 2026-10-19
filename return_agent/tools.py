@@ -1,4 +1,5 @@
 import hashlib
+from datetime import datetime, timezone
 
 from . import store
 from .policy import (
@@ -111,3 +112,108 @@ def preview_return_request(conn, current_user_id, order_line_id, quantity):
     }
     summary = f"订单行 {order_line_id}，退货数量 {quantity}（规则版本 {POLICY_VERSION}）"
     return _ok({"allowed": True, "plan": plan, "summary": summary})
+
+
+CONFIRMATION_MESSAGES = {
+    "NO_PENDING_CONFIRMATION": "当前没有待确认的退货方案。",
+    "CONFIRMATION_MISMATCH": "无法提交该确认，请重新预览。",
+    "CONFIRMATION_INVALID": "该确认已失效，请重新预览。",
+    "CONFIRMATION_EXPIRED": "该确认已过期，请重新预览。",
+    "PLAN_CHANGED": "订单信息已变化，请重新预览。",
+    "POLICY_CHANGED": "退货规则已更新，请重新预览。",
+}
+
+
+def _business(code):
+    message = CONFIRMATION_MESSAGES.get(code) or REJECTION_MESSAGES.get(code, "暂时无法判断")
+    return _error("business", code, message)
+
+
+def _as_utc(text):
+    parsed = datetime.fromisoformat(text)
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+def submit_return_request(conn, current_user_id, confirmation_id):
+    """提交执行器注入的确认。confirmation_id 不能由模型指定。"""
+    if not _is_valid_identity(current_user_id):
+        return _error("input", "INVALID_IDENTITY", "注入身份无效")
+    if confirmation_id is None or (
+        isinstance(confirmation_id, str) and confirmation_id.strip() == ""
+    ):
+        return _business("NO_PENDING_CONFIRMATION")
+
+    try:
+        with store.transaction(conn):
+            confirmation = store.get_confirmation(conn, confirmation_id)
+            if confirmation is None:
+                return _business("NO_PENDING_CONFIRMATION")
+            if confirmation["user_id"] != current_user_id:
+                return _business("CONFIRMATION_MISMATCH")
+
+            plan = confirmation["plan"]
+            order_line_id = plan["order_line_id"]
+            quantity = plan["quantity"]
+
+            if confirmation["status"] == "used":
+                return _ok({
+                    "request_id": confirmation["request_id"],
+                    "status": "already_exists",
+                    "order_line_id": order_line_id,
+                    "quantity": quantity,
+                })
+            if confirmation["status"] == "invalid":
+                return _business("CONFIRMATION_INVALID")
+
+            if confirmation["status"] == "expired" or datetime.now(timezone.utc) > _as_utc(
+                confirmation["expires_at"]
+            ):
+                store.update_confirmation_status(conn, confirmation_id, "expired")
+                return _business("CONFIRMATION_EXPIRED")
+
+            order_line = store.get_order_line(conn, order_line_id, current_user_id)
+            if order_line is None:
+                store.update_confirmation_status(conn, confirmation_id, "invalid")
+                return _business("PLAN_CHANGED")
+            if compute_plan_hash(order_line, quantity) != confirmation["plan_hash"]:
+                store.update_confirmation_status(conn, confirmation_id, "invalid")
+                return _business("PLAN_CHANGED")
+            if confirmation["policy_version"] != POLICY_VERSION:
+                store.update_confirmation_status(conn, confirmation_id, "invalid")
+                return _business("POLICY_CHANGED")
+
+            verdict = validate_return_request(
+                current_user_id, {**order_line, "owner_id": current_user_id}, quantity
+            )
+            reason_code = verdict["reason_code"]
+            if reason_code != OK:
+                store.update_confirmation_status(conn, confirmation_id, "invalid")
+                return _error(
+                    "business",
+                    reason_code,
+                    REJECTION_MESSAGES.get(reason_code, "暂时无法判断"),
+                )
+
+            request_id = store.create_return_request(
+                conn,
+                owner_id=current_user_id,
+                order_line_id=order_line_id,
+                quantity=quantity,
+                policy_version=confirmation["policy_version"],
+                confirmation_id=confirmation_id,
+                created_at=datetime.now(timezone.utc).isoformat(),
+            )
+            store.increment_reserved(conn, order_line_id, quantity)
+            store.update_confirmation_status(conn, confirmation_id, "used", request_id)
+            return _ok({
+                "request_id": request_id,
+                "status": "created",
+                "order_line_id": order_line_id,
+                "quantity": quantity,
+            })
+    except store.StoreTimeout:
+        return _error("system", "TIMEOUT", "订单存储响应超时")
+    except store.StoreError:
+        return _error("system", "TRANSACTION_FAILED", "提交失败，未产生申请或数量占用")

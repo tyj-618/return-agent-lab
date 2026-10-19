@@ -123,7 +123,8 @@
   - 烟测 `data/demo.db` → `rows: 7`，`line 101` 的 status/returnable 为 True
 - **用时 / 轮次 / 返工**：约 1h；1 轮实现 + 1 轮补测。
 - **局限与下次改进**：
-  - `StoreError → system/STORE_UNAVAILABLE` 的工具层映射**尚未验证**（属 M1 第 4/5 步）；
+  - 已验证：`StoreError` 映射 `system/STORE_UNAVAILABLE`，`SQLITE_BUSY` 映射 `system/TIMEOUT`；
+    真实锁用双连接 `BEGIN IMMEDIATE` + `timeout=0` 复现验证。
   - `create_return_request` / `increment_reserved` / `transaction` 尚未实现（M2）；
   - `connect` 建父目录只用已存在的临时目录测过，未单测嵌套路径。
 
@@ -168,6 +169,8 @@
 - **独立验证**：
   - `python3 -m unittest discover -s tests -t .` → `Ran 34 tests ... OK`
   - `test_plan_hash_changes_when_reserved_qty_changes` 通过 → 快照哈希能感知订单状态变化
-- **用时 / 轮次 / 返工**：约【待你填】；1 轮实现 + 1 轮补测。
-- **局限与下次改进**：已验证：`StoreError` 映射 `system/STORE_UNAVAILABLE`，`SQLITE_BUSY` 映射 `system/TIMEOUT`；
-    真实锁用双连接 `BEGIN IMMEDIATE` + `timeout=0` 复现验证。
+- **用时 / 轮次 / 返工**：30min；1 轮实现 + 1 轮补测。
+- **局限与下次改进**：
+  - `submit` 与"新方案使旧确认失效"未实现（M2）；
+  - 模型可见 schema 未定义（M1′）；
+  - preview 不重复校验归属，依赖存储层过滤（已在 docs/storage.md 记录不变式）。

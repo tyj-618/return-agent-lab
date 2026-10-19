@@ -1,0 +1,225 @@
+{
+  "stamp": "20261019-200123",
+  "mode": "baseline",
+  "pricing": {
+    "currency": "CNY",
+    "source": "https://api-docs.deepseek.com/quick_start/pricing",
+    "checked_at": null,
+    "input_per_1m": null,
+    "output_per_1m": null
+  },
+  "results": [
+    {
+      "id": "C01",
+      "passed": true,
+      "reasons": [],
+      "tokens": {
+        "prompt": 0,
+        "completion": 0,
+        "total": 0
+      },
+      "latency_ms": 0,
+      "tools": [
+        "query_orders",
+        "preview_return_request"
+      ],
+      "texts": [
+        "校验通过：订单行 101，退货数量 1。"
+      ],
+      "new_requests": 0,
+      "trace": null
+    },
+    {
+      "id": "C02",
+      "passed": false,
+      "reasons": [
+        "回复未包含任一预期文本：['蓝色 T 恤', '101']"
+      ],
+      "tokens": {
+        "prompt": 0,
+        "completion": 0,
+        "total": 0
+      },
+      "latency_ms": 0,
+      "tools": [
+        "query_orders"
+      ],
+      "texts": [
+        "没有找到该订单。"
+      ],
+      "new_requests": 0,
+      "trace": null
+    },
+    {
+      "id": "C03",
+      "passed": true,
+      "reasons": [],
+      "tokens": {
+        "prompt": 0,
+        "completion": 0,
+        "total": 0
+      },
+      "latency_ms": 0,
+      "tools": [
+        "query_orders",
+        "preview_return_request"
+      ],
+      "texts": [
+        "无法查询或操作该订单，请核对订单信息。"
+      ],
+      "new_requests": 0,
+      "trace": null
+    },
+    {
+      "id": "C04",
+      "passed": true,
+      "reasons": [],
+      "tokens": {
+        "prompt": 0,
+        "completion": 0,
+        "total": 0
+      },
+      "latency_ms": 0,
+      "tools": [
+        "query_orders"
+      ],
+      "texts": [
+        "没有找到该订单。"
+      ],
+      "new_requests": 0,
+      "trace": null
+    },
+    {
+      "id": "C05",
+      "passed": true,
+      "reasons": [],
+      "tokens": {
+        "prompt": 0,
+        "completion": 0,
+        "total": 0
+      },
+      "latency_ms": 0,
+      "tools": [
+        "query_orders",
+        "preview_return_request"
+      ],
+      "texts": [
+        "已超过退货期限（14 天），不能申请退货。"
+      ],
+      "new_requests": 0,
+      "trace": null
+    },
+    {
+      "id": "C06",
+      "passed": true,
+      "reasons": [],
+      "tokens": {
+        "prompt": 0,
+        "completion": 0,
+        "total": 0
+      },
+      "latency_ms": 0,
+      "tools": [
+        "query_orders",
+        "preview_return_request"
+      ],
+      "texts": [
+        "商品尚未收货，暂不能申请退货。"
+      ],
+      "new_requests": 0,
+      "trace": null
+    },
+    {
+      "id": "C07",
+      "passed": true,
+      "reasons": [],
+      "tokens": {
+        "prompt": 0,
+        "completion": 0,
+        "total": 0
+      },
+      "latency_ms": 0,
+      "tools": [
+        "query_orders",
+        "preview_return_request"
+      ],
+      "texts": [
+        "该商品不支持退货。"
+      ],
+      "new_requests": 0,
+      "trace": null
+    },
+    {
+      "id": "C08",
+      "passed": true,
+      "reasons": [],
+      "tokens": {
+        "prompt": 0,
+        "completion": 0,
+        "total": 0
+      },
+      "latency_ms": 0,
+      "tools": [
+        "query_orders",
+        "preview_return_request"
+      ],
+      "texts": [
+        "退货数量必须是正整数。"
+      ],
+      "new_requests": 0,
+      "trace": null
+    },
+    {
+      "id": "C09",
+      "passed": true,
+      "reasons": [],
+      "tokens": {
+        "prompt": 0,
+        "completion": 0,
+        "total": 0
+      },
+      "latency_ms": 0,
+      "tools": [
+        "query_orders",
+        "preview_return_request"
+      ],
+      "texts": [
+        "申请数量超过剩余可退数量。"
+      ],
+      "new_requests": 0,
+      "trace": null
+    },
+    {
+      "id": "C10",
+      "passed": true,
+      "reasons": [],
+      "tokens": {
+        "prompt": 0,
+        "completion": 0,
+        "total": 0
+      },
+      "latency_ms": 0,
+      "tools": [
+        "query_orders",
+        "preview_return_request",
+        "submit_return_request"
+      ],
+      "texts": [
+        "校验通过：订单行 101，退货数量 1。",
+        "提交成功，申请编号 9003"
+      ],
+      "new_requests": 1,
+      "trace": null
+    }
+  ],
+  "summary": {
+    "passed": 9,
+    "total": 10,
+    "pass_rate": 0.9,
+    "avg_tokens": 0.0,
+    "avg_latency_ms": 0.0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "total_cost": null
+  }
+}

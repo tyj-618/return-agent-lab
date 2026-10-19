@@ -1,0 +1,223 @@
+{
+  "stamp": "20261019-200056",
+  "mode": "agent",
+  "pricing": {
+    "currency": "CNY",
+    "source": "https://api-docs.deepseek.com/quick_start/pricing",
+    "checked_at": null,
+    "input_per_1m": null,
+    "output_per_1m": null
+  },
+  "results": [
+    {
+      "id": "C01",
+      "passed": true,
+      "reasons": [],
+      "tokens": {
+        "prompt": 3755,
+        "completion": 183,
+        "total": 3938
+      },
+      "latency_ms": 3032,
+      "tools": [
+        "query_orders",
+        "preview_return_request"
+      ],
+      "texts": [
+        "校验通过，可退货方案如下：\n\n- 商品：蓝色 T 恤（订单 1001，订单行号 101）\n- 本次退货数量：1 件（购买共 2 件）\n- 规则版本：policy-v1\n\n如果确认提交，请回复「确认提交」。"
+      ],
+      "new_requests": 0,
+      "trace": "/Users/tan/Documents/cursor/return-agent-lab/eval/runs/C01-20261019-200056.jsonl"
+    },
+    {
+      "id": "C02",
+      "passed": true,
+      "reasons": [],
+      "tokens": {
+        "prompt": 2174,
+        "completion": 65,
+        "total": 2239
+      },
+      "latency_ms": 1944,
+      "tools": [
+        "query_orders"
+      ],
+      "texts": [
+        "找到了蓝色 T 恤订单行：订单 1001，订单行 101，购买 2 件，已收货 3 天。\n\n请问这次想退几件？"
+      ],
+      "new_requests": 0,
+      "trace": "/Users/tan/Documents/cursor/return-agent-lab/eval/runs/C02-20261019-200056.jsonl"
+    },
+    {
+      "id": "C03",
+      "passed": true,
+      "reasons": [],
+      "tokens": {
+        "prompt": 2185,
+        "completion": 62,
+        "total": 2247
+      },
+      "latency_ms": 2051,
+      "tools": [
+        "query_orders"
+      ],
+      "texts": [
+        "没有找到订单行 501。您现有的订单行包括 101、102、201、202、301、302、401。请确认要退哪一行？"
+      ],
+      "new_requests": 0,
+      "trace": "/Users/tan/Documents/cursor/return-agent-lab/eval/runs/C03-20261019-200056.jsonl"
+    },
+    {
+      "id": "C04",
+      "passed": true,
+      "reasons": [],
+      "tokens": {
+        "prompt": 2183,
+        "completion": 71,
+        "total": 2254
+      },
+      "latency_ms": 1957,
+      "tools": [
+        "query_orders"
+      ],
+      "texts": [
+        "没有找到订单号 999 的订单。您当前有以下订单：1001、1002、1003、1004。\n\n请确认您要退的是哪个订单（以及具体商品/订单行）。"
+      ],
+      "new_requests": 0,
+      "trace": "/Users/tan/Documents/cursor/return-agent-lab/eval/runs/C04-20261019-200056.jsonl"
+    },
+    {
+      "id": "C05",
+      "passed": true,
+      "reasons": [],
+      "tokens": {
+        "prompt": 3660,
+        "completion": 135,
+        "total": 3795
+      },
+      "latency_ms": 2838,
+      "tools": [
+        "query_orders",
+        "preview_return_request"
+      ],
+      "texts": [
+        "校验结果：订单行 202「帆布包」（订单 1002）已超过退货期限，不能申请退货。\n\n需要我帮你看看其他订单行吗？"
+      ],
+      "new_requests": 0,
+      "trace": "/Users/tan/Documents/cursor/return-agent-lab/eval/runs/C05-20261019-200056.jsonl"
+    },
+    {
+      "id": "C06",
+      "passed": true,
+      "reasons": [],
+      "tokens": {
+        "prompt": 1783,
+        "completion": 98,
+        "total": 1881
+      },
+      "latency_ms": 2139,
+      "tools": [
+        "preview_return_request"
+      ],
+      "texts": [
+        "订单行 201 目前无法退货：系统返回的原因是「商品尚未收货，暂不能申请退货」。建议您收到商品后再申请退货。\n\n需要我帮您核对该订单行的信息吗？"
+      ],
+      "new_requests": 0,
+      "trace": "/Users/tan/Documents/cursor/return-agent-lab/eval/runs/C06-20261019-200056.jsonl"
+    },
+    {
+      "id": "C07",
+      "passed": true,
+      "reasons": [],
+      "tokens": {
+        "prompt": 3671,
+        "completion": 146,
+        "total": 3817
+      },
+      "latency_ms": 2863,
+      "tools": [
+        "query_orders",
+        "preview_return_request"
+      ],
+      "texts": [
+        "订单行 301（订单 1003，限量手办）不支持退货，因此无法提交退货申请。\n\n需要我帮您看看其他订单行吗？"
+      ],
+      "new_requests": 0,
+      "trace": "/Users/tan/Documents/cursor/return-agent-lab/eval/runs/C07-20261019-200056.jsonl"
+    },
+    {
+      "id": "C08",
+      "passed": false,
+      "reasons": [
+        "缺少必需工具：preview_return_request",
+        "缺少错误码：INVALID_QUANTITY"
+      ],
+      "tokens": {
+        "prompt": 2186,
+        "completion": 82,
+        "total": 2268
+      },
+      "latency_ms": 2075,
+      "tools": [
+        "query_orders"
+      ],
+      "texts": [
+        "订单行 101 对应的是「蓝色 T 恤」（订单 1001，购买数量 2 件）。\n\n退货数量需要是正整数，0 件无法生成退货申请。请告诉我你要退几件（1 或 2）？"
+      ],
+      "new_requests": 0,
+      "trace": "/Users/tan/Documents/cursor/return-agent-lab/eval/runs/C08-20261019-200056.jsonl"
+    },
+    {
+      "id": "C09",
+      "passed": true,
+      "reasons": [],
+      "tokens": {
+        "prompt": 3694,
+        "completion": 187,
+        "total": 3881
+      },
+      "latency_ms": 3139,
+      "tools": [
+        "query_orders",
+        "preview_return_request"
+      ],
+      "texts": [
+        "订单行 101（蓝色 T 恤）申请退 5 件未通过校验：**申请数量超过剩余可退数量**。\n\n该订单行购买数量为 2 件，您希望退几件？我按您确认的数量再校验一次。"
+      ],
+      "new_requests": 0,
+      "trace": "/Users/tan/Documents/cursor/return-agent-lab/eval/runs/C09-20261019-200056.jsonl"
+    },
+    {
+      "id": "C10",
+      "passed": true,
+      "reasons": [],
+      "tokens": {
+        "prompt": 7113,
+        "completion": 260,
+        "total": 7373
+      },
+      "latency_ms": 5197,
+      "tools": [
+        "query_orders",
+        "preview_return_request",
+        "submit_return_request"
+      ],
+      "texts": [
+        "校验通过，可退方案如下：\n\n- 订单 1001，蓝色 T 恤（订单行号 101）\n- 退货数量：1 件\n- 规则版本：policy-v1\n\n请确认是否提交？确认后我将提交该退货方案。",
+        "已提交成功：\n\n- 退货申请号：9003\n- 订单 1001，蓝色 T 恤（订单行号 101），数量 1 件\n- 状态：created\n\n如需查询后续处理进度，可以随时告诉我。"
+      ],
+      "new_requests": 1,
+      "trace": "/Users/tan/Documents/cursor/return-agent-lab/eval/runs/C10-20261019-200056.jsonl"
+    }
+  ],
+  "summary": {
+    "passed": 9,
+    "total": 10,
+    "pass_rate": 0.9,
+    "avg_tokens": 3369.3,
+    "avg_latency_ms": 2723.5,
+    "prompt_tokens": 32404,
+    "completion_tokens": 1289,
+    "total_cost": null
+  }
+}

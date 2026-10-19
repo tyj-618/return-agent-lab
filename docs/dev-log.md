@@ -147,3 +147,27 @@
   - `get_return_policy` 只断言了 version/window_days/summary，未断言其余规则字段（低风险，同源导入）；
   - `preview` 未实现（M1 第 5 步）；`submit` 未实现（M2）；
   - 工具尚未接入 Agent 循环，**模型可见 schema 尚未定义**。
+
+## 2026-10-19 · M1：preview_return_request
+
+- **任务与验收条件**：按 docs/tools.md 实现 preview（读订单行 → validate → 快照哈希 → 返回方案），
+  不写入任何数据；验收：34 个测试通过，覆盖允许 / 业务拒绝 / 越权 / 不存在 / 输入非法 /
+  系统失败 / 无副作用 / 哈希确定性 / 数量非法。
+- **本次关注的链路环节**：契约落地 / 安全边界 / 测试设计。
+- **给 AI 的指令（摘要）**：给出函数签名、判定顺序、`plan_hash` 的序列化方式、10 组测试要求，
+  并明确"不得写入、不返回他人详情、policy_version 必须来自 policy.py"。
+- **我给了哪些上下文，为什么**：只给 docs/tools.md 的 preview 一节 + store 接口 + validate 签名；
+  不给实现代码，避免照抄。
+- **AI 实际产出**：`return_agent/tools.py` 增加 `preview_return_request` 与 `compute_plan_hash`；
+  `tests/test_preview.py`（12 个测试）。
+- **我的判断**：接受，但有一处设计取舍需要记录（见"发现的偏差"）。
+- **发现的偏差**：preview 为复用 `validate_return_request` 而注入 `owner_id=current_user_id`，
+  导致 validate 的 `FORBIDDEN` 分支在预览路径不可达；归属实际只由存储层保证。
+- **我的措施**：确认存储层确实按 owner 过滤（501 用例证明），并在 `docs/storage.md` 记录该隐性依赖
+  与不变式，防止未来改动静默放行。
+- **独立验证**：
+  - `python3 -m unittest discover -s tests -t .` → `Ran 34 tests ... OK`
+  - `test_plan_hash_changes_when_reserved_qty_changes` 通过 → 快照哈希能感知订单状态变化
+- **用时 / 轮次 / 返工**：约【待你填】；1 轮实现 + 1 轮补测。
+- **局限与下次改进**：已验证：`StoreError` 映射 `system/STORE_UNAVAILABLE`，`SQLITE_BUSY` 映射 `system/TIMEOUT`；
+    真实锁用双连接 `BEGIN IMMEDIATE` + `timeout=0` 复现验证。

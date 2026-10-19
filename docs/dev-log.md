@@ -143,7 +143,7 @@
 - **发现的偏差**：无。
 - **我的措施**：无。
 - **独立验证**：`python3 -m unittest discover -s tests -t .` → `Ran 19 tests ... OK`
-- **用时 / 轮次 / 返工**：约【待你填】；1 轮。
+- **用时 / 轮次 / 返工**：约 30min；1 轮。
 - **局限与下次改进**：
   - `get_return_policy` 只断言了 version/window_days/summary，未断言其余规则字段（低风险，同源导入）；
   - `preview` 未实现（M1 第 5 步）；`submit` 未实现（M2）；
@@ -174,3 +174,33 @@
   - `submit` 与"新方案使旧确认失效"未实现（M2）；
   - 模型可见 schema 未定义（M1′）；
   - preview 不重复校验归属，依赖存储层过滤（已在 docs/storage.md 记录不变式）。
+
+## 2026-10-19 · M1′：真实模型最小 Agent 循环（DeepSeek）
+
+- **任务与验收条件**：接真实模型，跑通「澄清 → 预览 → 拒绝」闭环 + 可回放 trace；
+  验收：51 个测试通过、4 类真实场景正常、trace 含 user/model/tool/assistant/stop。
+- **本次关注的链路环节**：工具 schema 设计 / 上下文组织 / 真实运行验证。
+- **给 AI 的指令（摘要）**：5 个决策（openai SDK、只暴露 3 工具、停止条件、系统提示词、JSONL trace）；
+  循环测试用假 LLM、不联网。
+- **我给了哪些上下文，为什么**：只给 docs/agent_flow.md 与工具契约；不给实现代码。
+- **AI 实际产出**：`llm.py`、`agent.py`、`trace.py`、`tool_schemas.py`、`cli.py`，17 个循环测试。
+- **我的判断**：接受；但发现两处问题并修正。
+- **发现的偏差**：
+  1. 模型虚构"官方客服 / App 自助入口"——违反"不能编造"；
+  2. 输入"订单 1001"时，模型把 1001 读成"订单10"（模型侧解析错误）。
+- **我的措施**：
+  1. system prompt 增加"不要提及不存在的官方渠道、App 或客服"与"不确定就说明不确定"；
+  2. 增加"订单号必须与工具返回的 order_id 精确匹配，不得截断改写"；
+  3. trace 增加 user / assistant 事件（否则无法复盘上述问题）。
+- **独立验证**：
+  - `python3 -m unittest discover -s tests -t .` → `Ran 51 tests ... OK`
+  - 同一输入连续 3 次运行，`docs/traces/20261019-1625*.jsonl`：
+    3/3 用户输入含 1001、工具链为 query_orders → preview(101,1)、回复无"订单10"。
+  - 正常流程 trace：`user → model → tool → model → tool → model → assistant → stop`。
+  - 上下文 token 592 → 2307（未压缩，作为 M3 基线）。
+- **用时 / 轮次 / 返工**：约【待你填】。
+- **局限与下次改进**：
+  - 3 次通过样本太小，未做更大规模复现；
+  - 会话内订单数据不刷新（query_orders 一次调用后被历史复用）；
+  - 上下文无压缩，token 随轮次增长；
+  - `submit` 未实现（M2）。

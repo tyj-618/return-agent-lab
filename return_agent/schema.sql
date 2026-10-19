@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS return_requests (
     quantity        INTEGER NOT NULL CHECK (quantity > 0),
     policy_version  TEXT    NOT NULL,
     status          TEXT    NOT NULL DEFAULT 'submitted',
-    confirmation_id TEXT    UNIQUE,
+    confirmation_id TEXT    UNIQUE REFERENCES confirmations(confirmation_id),
     created_at      TEXT    NOT NULL
 );
 

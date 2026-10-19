@@ -1,8 +1,11 @@
 import os
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
 
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
+SCHEMA_VERSION = 1
+_REQUIRED_TABLES = ("order_lines", "return_requests", "confirmations")
 
 SEED_CREATED_AT = "2026-10-01T00:00:00Z"
 
@@ -66,8 +69,31 @@ def connect(path=":memory:"):
 
 def init_schema(conn):
     try:
+        conn.execute("PRAGMA foreign_keys = ON")
+        version = conn.execute("PRAGMA user_version").fetchone()[0]
+
+        if version == 0:
+            placeholders = ",".join("?" for _ in _REQUIRED_TABLES)
+            rows = conn.execute(
+                f"SELECT name FROM sqlite_master WHERE type='table' "
+                f"AND name IN ({placeholders})",
+                _REQUIRED_TABLES,
+            ).fetchall()
+            if rows:
+                names = ", ".join(sorted(r[0] for r in rows))
+                raise StoreError(
+                    f"检测到旧版数据库（user_version=0，但已存在表：{names}）；"
+                    "请删除旧库后重建（例如 rm -f return_agent/data/demo.db）"
+                )
+        elif version != SCHEMA_VERSION:
+            raise StoreError(
+                f"数据库 schema 版本不匹配（现有 {version}，期望 {SCHEMA_VERSION}）；"
+                "请删除旧库后重建"
+            )
+
         conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
-    except (sqlite3.Error, OSError) as e:
+        conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+    except sqlite3.Error as e:
         raise _to_store_error(e, "init_schema") from e
 
 
@@ -125,3 +151,137 @@ def get_order_line(conn, order_line_id, owner_id):
     except sqlite3.Error as e:
         raise _to_store_error(e, "get_order_line") from e
     return _row_to_dict(row) if row is not None else None
+
+
+CONFIRMATION_COLUMNS = (
+    "confirmation_id", "user_id", "order_line_id", "quantity", "policy_version",
+    "plan_hash", "created_at", "expires_at", "status", "request_id",
+)
+
+RETURN_REQUEST_COLUMNS = (
+    "request_id", "owner_id", "order_line_id", "quantity", "policy_version",
+    "status", "confirmation_id", "created_at",
+)
+
+
+@contextmanager
+def transaction(conn):
+    """BEGIN IMMEDIATE / COMMIT / ROLLBACK；失败时回滚并抛 StoreError。
+
+    调用前连接不得处于事务中。块内抛出的非存储异常回滚后原样抛出，不包装成 StoreError。
+    """
+    if conn.in_transaction:
+        raise StoreError("transaction: 连接已处于事务中，请先提交或回滚")
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+    except sqlite3.Error as e:
+        raise _to_store_error(e, "transaction.begin") from e
+    try:
+        yield conn
+    except BaseException:
+        try:
+            conn.rollback()
+        except sqlite3.Error:
+            pass
+        raise
+    try:
+        conn.commit()
+    except sqlite3.Error as e:
+        try:
+            conn.rollback()
+        except sqlite3.Error:
+            pass
+        raise _to_store_error(e, "transaction.commit") from e
+
+
+def create_confirmation(conn, *, confirmation_id, user_id, order_line_id, quantity,
+                        policy_version, plan_hash, created_at, expires_at):
+    try:
+        conn.execute(
+            "INSERT INTO confirmations (confirmation_id, user_id, order_line_id, quantity, "
+            "policy_version, plan_hash, created_at, expires_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (confirmation_id, user_id, order_line_id, quantity,
+             policy_version, plan_hash, created_at, expires_at),
+        )
+    except sqlite3.Error as e:
+        raise _to_store_error(e, "create_confirmation") from e
+
+
+def get_confirmation(conn, confirmation_id):
+    try:
+        row = conn.execute(
+            f"SELECT {', '.join(CONFIRMATION_COLUMNS)} FROM confirmations "
+            "WHERE confirmation_id = ?",
+            (confirmation_id,),
+        ).fetchone()
+    except sqlite3.Error as e:
+        raise _to_store_error(e, "get_confirmation") from e
+    if row is None:
+        return None
+    return {
+        "confirmation_id": row["confirmation_id"],
+        "user_id": row["user_id"],
+        "plan": {
+            "order_line_id": row["order_line_id"],
+            "quantity": row["quantity"],
+            "policy_version": row["policy_version"],
+            "plan_hash": row["plan_hash"],
+        },
+        "plan_hash": row["plan_hash"],
+        "policy_version": row["policy_version"],
+        "created_at": row["created_at"],
+        "expires_at": row["expires_at"],
+        "status": row["status"],
+        "request_id": row["request_id"],
+    }
+
+
+def update_confirmation_status(conn, confirmation_id, status, request_id=None):
+    try:
+        cursor = conn.execute(
+            "UPDATE confirmations SET status = ?, request_id = COALESCE(?, request_id) "
+            "WHERE confirmation_id = ?",
+            (status, request_id, confirmation_id),
+        )
+    except sqlite3.Error as e:
+        raise _to_store_error(e, "update_confirmation_status") from e
+    if cursor.rowcount == 0:
+        raise StoreError(f"update_confirmation_status: confirmation {confirmation_id} not found")
+
+
+def create_return_request(conn, *, owner_id, order_line_id, quantity,
+                          policy_version, confirmation_id, created_at):
+    try:
+        cursor = conn.execute(
+            "INSERT INTO return_requests (owner_id, order_line_id, quantity, policy_version, "
+            "confirmation_id, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (owner_id, order_line_id, quantity, policy_version, confirmation_id, created_at),
+        )
+    except sqlite3.Error as e:
+        raise _to_store_error(e, "create_return_request") from e
+    return cursor.lastrowid
+
+
+def get_return_request_by_confirmation(conn, confirmation_id):
+    try:
+        row = conn.execute(
+            f"SELECT {', '.join(RETURN_REQUEST_COLUMNS)} FROM return_requests "
+            "WHERE confirmation_id = ?",
+            (confirmation_id,),
+        ).fetchone()
+    except sqlite3.Error as e:
+        raise _to_store_error(e, "get_return_request_by_confirmation") from e
+    return {col: row[col] for col in RETURN_REQUEST_COLUMNS} if row is not None else None
+
+
+def increment_reserved(conn, order_line_id, quantity):
+    try:
+        cursor = conn.execute(
+            "UPDATE order_lines SET reserved_qty = reserved_qty + ? WHERE order_line_id = ?",
+            (quantity, order_line_id),
+        )
+    except sqlite3.Error as e:
+        raise _to_store_error(e, "increment_reserved") from e
+    if cursor.rowcount == 0:
+        raise StoreError(f"increment_reserved: order line {order_line_id} not found")

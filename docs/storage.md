@@ -70,3 +70,42 @@ init_schema(conn) -> None
 seed_demo_data(conn) -> None                 # 幂等：INSERT OR IGNORE
 list_order_lines(conn, owner_id) -> list[dict]
 get_order_line(conn, order_line_id, owner_id) -> dict | None
+```
+
+### M2（写入）
+
+```text
+transaction(conn)                            # 上下文管理器：BEGIN IMMEDIATE / COMMIT / ROLLBACK
+create_confirmation(conn, *, confirmation_id, user_id, order_line_id, quantity,
+                    policy_version, plan_hash, created_at, expires_at) -> None
+get_confirmation(conn, confirmation_id) -> dict | None
+update_confirmation_status(conn, confirmation_id, status, request_id=None) -> None
+create_return_request(conn, *, owner_id, order_line_id, quantity,
+                      policy_version, confirmation_id, created_at) -> int   # 返回 request_id
+get_return_request_by_confirmation(conn, confirmation_id) -> dict | None
+increment_reserved(conn, order_line_id, quantity) -> None
+```
+
+- 写函数不自己开事务，由调用方用 `transaction()` 包裹；`transaction` 要求调用前连接**不在事务中**，否则抛 `StoreError`。块内异常回滚后原样抛出；`BEGIN` / `COMMIT` 的 `sqlite3.Error` 转为 `StoreError` / `StoreTimeout`。
+- `get_confirmation` 返回契约形状（与 `docs/tools.md` 注入的 `confirmation` 一致）：顶层 `confirmation_id, user_id, plan, plan_hash, policy_version, created_at, expires_at, status, request_id`；`plan = {order_line_id, quantity, policy_version, plan_hash}`。`plan_hash` 与 `policy_version` 在顶层和 `plan` 内同值，来自同一行。
+- `return_requests.confirmation_id` 有 `UNIQUE` 约束并外键引用 `confirmations(confirmation_id)`：同一确认只能产生一条申请，且不能引用不存在的确认。
+- `update_confirmation_status`、`increment_reserved` 未更新到任何行时抛 `StoreError`；`increment_reserved` 超过 `purchased_qty` 时由 `CHECK` 约束拒绝，抛 `StoreError`。
+
+## schema 版本与连接约束
+
+- **版本号**：`store.SCHEMA_VERSION`（当前为 `1`）对应 SQLite 的 `PRAGMA user_version`。判定规则见下一小节。修改 `schema.sql` 时必须同步提升 `SCHEMA_VERSION`。
+
+### schema 版本与旧库检测
+
+`init_schema` 的判定规则：
+
+1. `user_version == 0` 且库中没有任何业务表 → 新库，建表并写入 `SCHEMA_VERSION`；
+2. `user_version == SCHEMA_VERSION` → 幂等，允许重复调用；
+3. `user_version == 0` 但已存在业务表 → 旧库，拒绝并提示删除重建；
+4. 其他版本号 → 版本不匹配，拒绝并提示删除重建。
+
+库是演示数据，不做迁移。schema 变更后必须删除旧库：
+`rm -f return_agent/data/*.db`。
+- **外键是连接级设置**：`PRAGMA foreign_keys` 只对当前连接生效，不保存在库文件中。生产路径必须用 `store.connect` 建立连接（它会开启外键）；直接 `sqlite3.connect` 的连接不执行外键约束。
+- **插入顺序**：`create_confirmation` → `create_return_request`（引用 `confirmation_id`）→ `update_confirmation_status` 回填 `request_id`。`confirmations` 与 `return_requests` 互相引用，必须按此顺序写入。
+- **不删除申请记录**：本系统不删除 `return_requests` 中的记录。若未来需要删除，必须先解除引用（把 `confirmations.request_id` 置空）再删除。

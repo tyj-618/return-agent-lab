@@ -77,3 +77,52 @@
   后续每个模块上简历前都要过这一门。
   - 实际用时未记录，无法评估返工成本；下次记录开始/结束时间。
 
+## 2026-10-19 · M1：退货规则单一来源（policy.py）
+
+- **任务与验收条件**：把窗口天数从 `validation.py` 的硬编码移到 `policy.py`，保证规则只有一处定义；
+  验收：38 条用例仍通过，`WINDOW_DAYS` 只在 `policy.py` 定义。
+- **本次关注的链路环节**：契约与实现的一致性 / 重构范围控制。
+- **给 AI 的指令（摘要）**：只新建 `policy.py`、只改 `validation.py` 的常量来源；
+  不动判定顺序、不动测试、不动文档；完成后跑测试并贴输出。
+- **我给了哪些上下文，为什么**：只给"目标 + 两个文件 + 禁止项"。这是一次小重构，
+  给整份契约反而会让它顺手改别的。
+- **AI 实际产出**：新建 `policy.py`（`POLICY_VERSION`、`WINDOW_DAYS`、`REQUIRE_DELIVERED`、
+  `REQUIRE_RETURNABLE`、`QUANTITY_RULE`、`SUMMARY`）；`validation.py` 顶部改为
+  `from .policy import WINDOW_DAYS`，删除本地 `RETURN_WINDOW_DAYS`。
+- **我的判断**：接受。依据：`WINDOW_DAYS` 只在 `policy.py` 定义，`validation.py` 只导入使用；
+  判定顺序未变。
+- **发现的偏差**：无。
+- **我的措施**：无（不需要）。
+- **独立验证**：
+  - `grep -n "WINDOW_DAYS" return_agent/*.py`
+    → `policy.py:2` 定义、`validation.py:1` 导入、`validation.py:39` 使用。
+  - `python3 -m unittest discover -s tests -t .`
+    → `Ran 5 tests in 0.000s` / `OK`
+- **用时 / 轮次 / 返工**：约 1h；1 轮，无返工。
+- **局限与下次改进**：本次只搬了窗口天数；`status`、`returnable`、数量规则仍写在校验代码里。
+  若以后要做到"规则可配置"，需要把这几条也收进 `policy.py` 并由 `validate` 读取。
+  当前演示范围不做。
+
+  ## 2026-10-19 · M1：存储层（SQLite + 种子数据）
+
+- **任务与验收条件**：按 docs/storage.md 实现 SQLite 存储与种子数据；
+  验收：12 个测试通过、所有者过滤/排序/布尔转换/幂等/持久化均有断言。
+- **本次关注的链路环节**：契约落地 / 数据结构设计 / 测试设计。
+- **给 AI 的指令（摘要）**：给出 schema.sql 与接口签名；明确种子表、布尔转换、
+  owner 过滤、StoreError 语义；只建 4 个文件；不实现 M2 的写接口。
+- **我给了哪些上下文，为什么**：给完整 DDL 与种子表，不给实现代码——
+  DDL 是契约，实现应留给 AI；同时避免它自创表结构。
+- **AI 实际产出**：`return_agent/schema.sql`（三张表）、`return_agent/store.py`（112 行）、
+  `tests/test_store.py`（7 个测试）、`docs/storage.md`。
+- **我的判断**：接受。依据：DDL 单一来源、布尔转换在边界、owner 过滤在存储层、
+  测试断言到字段集合与幂等计数，不是只测"能跑"。
+- **发现的偏差**：无。
+- **我的措施**：补了 StoreError 与文件库持久化两组测试（原实现只测 :memory:）。
+- **独立验证**：
+  - `python3 -m unittest discover -s tests -t .` → `Ran 12 tests ... OK`
+  - 烟测 `data/demo.db` → `rows: 7`，`line 101` 的 status/returnable 为 True
+- **用时 / 轮次 / 返工**：约【待你填】；1 轮实现 + 1 轮补测。
+- **局限与下次改进**：
+  - `StoreError → system/STORE_UNAVAILABLE` 的工具层映射**尚未验证**（属 M1 第 4/5 步）；
+  - `create_return_request` / `increment_reserved` / `transaction` 尚未实现（M2）；
+  - `connect` 建父目录只用已存在的临时目录测过，未单测嵌套路径。

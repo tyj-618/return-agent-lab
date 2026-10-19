@@ -1,3 +1,5 @@
+from .policy import WINDOW_DAYS
+
 OK = "OK"
 FORBIDDEN = "FORBIDDEN"
 NOT_DELIVERED = "NOT_DELIVERED"
@@ -18,8 +20,6 @@ REASON_CODES = frozenset({
     INSUFFICIENT_QUANTITY,
 })
 
-RETURN_WINDOW_DAYS = 14
-
 
 def _result(reason_code):
     return {"allowed": reason_code == OK, "reason_code": reason_code}
@@ -36,7 +36,7 @@ def validate_return_request(current_user_id, order_line, quantity):
     days = order_line["days_since_delivery"]
     if days < 0:
         return _result(INVALID_INPUT)
-    if days > RETURN_WINDOW_DAYS:
+    if days > WINDOW_DAYS:
         return _result(WINDOW_EXPIRED)
 
     if order_line["returnable"] is not True:

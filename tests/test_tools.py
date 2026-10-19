@@ -1,3 +1,4 @@
+import sqlite3
 import unittest
 
 from return_agent import policy, store
@@ -84,6 +85,20 @@ class EnvelopeShapeTest(unittest.TestCase):
             with self.subTest(code=result["error"]["code"]):
                 self.assertEqual(set(result), ENVELOPE_KEYS)
                 self.assertEqual(set(result["error"]), ERROR_KEYS)
+
+
+class _LockedConn:
+    def execute(self, *args, **kwargs):
+        raise sqlite3.OperationalError("database is locked")
+
+
+class TimeoutMappingTest(unittest.TestCase):
+    def test_locked_store_maps_to_timeout(self):
+        result = query_orders(_LockedConn(), "U001")
+        self.assertIs(result["ok"], False)
+        self.assertIsNone(result["data"])
+        self.assertEqual(result["error"]["category"], "system")
+        self.assertEqual(result["error"]["code"], "TIMEOUT")
 
 
 if __name__ == "__main__":

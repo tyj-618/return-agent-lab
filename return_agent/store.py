@@ -35,6 +35,21 @@ class StoreError(Exception):
     pass
 
 
+class StoreTimeout(StoreError):
+    pass
+
+
+def _to_store_error(e, context):
+    code = getattr(e, "sqlite_errorcode", None)
+    if code is not None:
+        if code == getattr(sqlite3, "SQLITE_BUSY", 5):
+            return StoreTimeout(f"{context}: {e}")
+        return StoreError(f"{context}: {e}")
+    if "database is locked" in str(e).lower():
+        return StoreTimeout(f"{context}: {e}")
+    return StoreError(f"{context}: {e}")
+
+
 def connect(path=":memory:"):
     try:
         if path != ":memory:":
@@ -45,7 +60,7 @@ def connect(path=":memory:"):
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
     except (sqlite3.Error, OSError) as e:
-        raise StoreError(f"connect failed: {e}") from e
+        raise _to_store_error(e, "connect") from e
     return conn
 
 
@@ -53,7 +68,7 @@ def init_schema(conn):
     try:
         conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
     except (sqlite3.Error, OSError) as e:
-        raise StoreError(f"init_schema failed: {e}") from e
+        raise _to_store_error(e, "init_schema") from e
 
 
 def seed_demo_data(conn):
@@ -72,7 +87,7 @@ def seed_demo_data(conn):
                 [row + (SEED_CREATED_AT,) for row in SEED_RETURN_REQUESTS],
             )
     except sqlite3.Error as e:
-        raise StoreError(f"seed_demo_data failed: {e}") from e
+        raise _to_store_error(e, "seed_demo_data") from e
 
 
 def _row_to_dict(row):
@@ -96,7 +111,7 @@ def list_order_lines(conn, owner_id):
             (owner_id,),
         ).fetchall()
     except sqlite3.Error as e:
-        raise StoreError(f"list_order_lines failed: {e}") from e
+        raise _to_store_error(e, "list_order_lines") from e
     return [_row_to_dict(row) for row in rows]
 
 
@@ -108,5 +123,5 @@ def get_order_line(conn, order_line_id, owner_id):
             (order_line_id, owner_id),
         ).fetchone()
     except sqlite3.Error as e:
-        raise StoreError(f"get_order_line failed: {e}") from e
+        raise _to_store_error(e, "get_order_line") from e
     return _row_to_dict(row) if row is not None else None

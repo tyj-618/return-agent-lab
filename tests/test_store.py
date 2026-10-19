@@ -10,6 +10,14 @@ from return_agent.store import (
     list_order_lines,
     seed_demo_data,
 )
+from return_agent.validation import OK, REASON_CODES
+from return_agent.tools import REJECTION_MESSAGES
+
+
+class RejectionMessageCoverageTest(unittest.TestCase):
+    def test_every_reason_code_has_a_message(self):
+        missing = set(REASON_CODES) - {OK} - set(REJECTION_MESSAGES)
+        self.assertEqual(missing, set(), f"缺少文案的原因码: {missing}")
 
 
 def seeded_conn():
@@ -110,6 +118,25 @@ class StoreFilePersistenceTest(unittest.TestCase):
                 store.get_order_line(conn2, 101, "U001")["order_line_id"], 101
             )
             conn2.close()
+
+
+class RealLockTimeoutTest(unittest.TestCase):
+    def test_real_lock_maps_to_store_timeout(self):
+        import sqlite3
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "demo.db")
+            holder = store.connect(path)
+            store.init_schema(holder)
+            store.seed_demo_data(holder)
+            holder.execute("BEGIN IMMEDIATE")
+            contender = sqlite3.connect(path, timeout=0)
+            try:
+                with self.assertRaises(store.StoreTimeout):
+                    store.seed_demo_data(contender)
+            finally:
+                contender.close()
+                holder.rollback()
+                holder.close()
 
 
 if __name__ == "__main__":

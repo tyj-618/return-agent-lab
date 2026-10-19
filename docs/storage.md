@@ -17,6 +17,8 @@
 | 布尔转换 | SQLite 存 0/1，store 返回 dict 时转 `bool` | 与 `docs/tools.md`"工具边界负责转换"一致 |
 | 时间格式 | ISO-8601 UTC 字符串 | 统一、可比较 |
 | 确认表 | 现在就建（M2 使用） | 与申请记录同理 |
+| 超时 | 按 SQLite 错误码 `SQLITE_BUSY` 识别（无错误码时精确匹配 "database is locked"），映射为 system/TIMEOUT | 避免把 SQLITE_LOCKED 等其他加锁错误误判为超时 |
+| 归属校验 | 只在存储层强制（`get_order_line` 按 `owner_id` 过滤）；`preview` 不重复校验，注入 `owner_id` 仅用于复用 `validate_return_request` | 避免重复校验；代价是 `preview` 的 `FORBIDDEN` 分支不可达 |
 
 ## 表结构
 
@@ -30,6 +32,9 @@
 - `purchased_qty > 0`
 - `0 <= reserved_qty <= purchased_qty`
 - `days_since_delivery >= 0`（负天数只在 `validate_return_request` 单测中覆盖，库中不允许出现）
+- **`get_order_line` 必须始终按 `owner_id` 过滤**：`preview_return_request` 依赖这一点来保证归属；
+  它注入 `owner_id` 只是为了复用 `validate_return_request`，`validate` 的 `FORBIDDEN` 分支在预览路径上不可达。
+  若以后修改该查询，必须同步恢复 preview 的归属校验。
 
 ## 种子数据
 

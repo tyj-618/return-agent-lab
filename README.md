@@ -1,7 +1,5 @@
 # return-agent-lab
 
-[![tests](https://github.com/tyj-618/return-agent-lab/actions/workflows/tests.yml/badge.svg)](https://github.com/tyj-618/return-agent-lab/actions/workflows/tests.yml)
-
 一个**退货申请处理 Agent**：用户用自然语言提出退货，Agent 负责澄清、查询、生成方案；系统负责身份注入、规则判定、确认绑定与事务写入。
 
 **状态**：可运行、可评测、有端到端 trace 证据。102 个测试；10 个固定案例 ×3 轮，Agent 30/30，固定流程基线 9/10。
@@ -49,19 +47,11 @@ python3 -m eval.run_eval --baseline
 
 ## 架构
 
-```text
-用户输入
-   │
-   ▼
-CLI ──► ChatSession ──► Agent（有界循环）──► LLM（OpenAI 兼容）
-   │                         │
-   │                         ├─► 工具层（身份/连接由执行器注入）
-   │                         │     query_orders / get_return_policy
-   │                         │     preview_return_request / submit_return_request
-   │                         ▼
-   │                      SQLite（订单行 / 申请 / 确认）
-   └─► 用户输入「确认提交」时创建确认记录（模型无权创建）
-```
+![architecture](docs/assets/architecture.svg)
+
+- 确认记录只由 CLI 在精确输入「确认提交」时创建；模型无权创建。
+- 身份与确认由执行器注入，模型不可见、不可指定。
+- 工具层的检查与写入在同一个 `BEGIN IMMEDIATE` 事务内。
 
 ## 安全边界
 

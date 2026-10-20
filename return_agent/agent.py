@@ -92,8 +92,11 @@ class Agent:
         confirmation_id = "c-" + uuid.uuid4().hex[:12]
         now = datetime.now(timezone.utc)
         plan = self.pending_plan
+        previous_id = self.confirmation_id
         try:
             with store.transaction(self.conn):
+                if previous_id:
+                    store.update_confirmation_status(self.conn, previous_id, "invalid")
                 store.create_confirmation(
                     self.conn,
                     confirmation_id=confirmation_id,

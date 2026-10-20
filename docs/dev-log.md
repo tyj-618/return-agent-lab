@@ -236,6 +236,26 @@
   - 确认 10 分钟过期只在单测验证，未做真实等待；
   - 会话内订单数据不刷新（query_orders 一次调用后被历史复用）。
 
+## 2026-10-19 · M3：10 案例评测 + 固定流程基线
+
+- **任务与验收条件**：10 个固定案例各跑 3 次，Agent 与固定流程基线对照；
+  判定只看 trace 与数据库信号，不做文本打分。
+- **本次关注的链路环节**：评测设计 / 失败分析 / 成本与延迟。
+- **给 AI 的指令（摘要）**：先抽 ChatSession 保证 CLI 与评测同路径；用例与判定分离；
+  基线用正则解析、不调模型；每个案例独立临时库。
+- **AI 实际产出**：eval/cases.py、checks.py、run_eval.py、baseline_fixed.py、pricing.json；
+  docs/evaluation.md；eval/results/ 5 份结果。
+- **我的判断**：首次 6/10，不接受；定位后修正再跑。
+- **发现的偏差与修正**：
+  1. C03/C04 期望 preview，Agent 实际走「查询后找不到」→ 改用例（af16df5）；
+  2. C08/C09 绕过 preview 自行判断数量 → 提示词明确 0/负数/超量也必须调用 preview（af16df5）；
+  3. 第二次全量 10/10 后又出现 9/10（C08 随机性）→ 加强 prompt 后连续 3 次 10/10。
+- **独立验证**：
+  - `python3 -m unittest discover -s tests -t .` → `Ran 101 tests ... OK`
+  - `docs/evaluation.md`：Agent 30/30，基线 9/10；平均 3744 token / 2573 ms 每案
+- **用时 / 轮次 / 返工**：约【待你填】。
+- **局限与下次改进**：3 次样本仍小；单一模型与数据集；关键词判定启发式；未做人工评估。
+
 ### 2026-10-20 · 改进：确认有效期收敛为单一常量
 
 - **触发**：现场改动题要求把确认有效期从 10 分钟改成 30 分钟。
@@ -246,7 +266,9 @@
 - **改动**：`config.py`（新建）、`agent.py`、`session.py`、`baseline_fixed.py`、
   `test_confirm_flow.py`、`test_session.py`、`test_submit.py`、
   `docs/confirmation_flow.md`、`README.md`。
-- **验证**：【跑完测试后填】；`grep` 复查后只剩 `docs/dev-log.md` 的历史记录。
+- **验证**：`python3 -m unittest discover -s tests -t .` → `Ran 101 tests ... OK`；
+  `grep` 复查：代码、测试、`README.md`、`confirmation_flow.md` 均无 10 分钟残留，
+  只剩 `docs/dev-log.md` 的 3 行（历史记录 + 本节内容）。
 - **可复用结论**：
   1. 凡"用户可见文案 + 测试断言 + 文档"都出现的数字，先收敛成常量再改；
   2. 搜同一概念要覆盖写法变体——这次 `10min` 就漏在"10 分钟 / minutes=10"之外；

@@ -2,7 +2,7 @@
 
 一个**退货申请处理 Agent**：用户用自然语言提出退货，Agent 负责澄清、查询、生成方案；系统负责身份注入、规则判定、确认绑定与事务写入。
 
-**状态**：可运行、可评测、有端到端 trace 证据。101 个测试；10 个固定案例 ×3 轮，Agent 30/30，固定流程基线 9/10。
+**状态**：可运行、可评测、有端到端 trace 证据。102 个测试；10 个固定案例 ×3 轮，Agent 30/30，固定流程基线 9/10。
 
 ## 快速开始
 
@@ -33,7 +33,7 @@ CLI 输入示例：
 ## 测试与评测
 
 ```bash
-# 单元测试（101 个，不联网）
+# 单元测试（102 个，不联网）
 python3 -m unittest discover -s tests -t .
 
 # 评测：10 案例（会调用真实模型）
@@ -88,7 +88,7 @@ CLI ──► ChatSession ──► Agent（有界循环）──► LLM（OpenA
 
 ```text
 return_agent/   业务代码：规则、存储、工具、Agent 循环、CLI
-tests/          101 个测试
+tests/          102 个测试
 eval/           10 案例评测 + 固定流程基线
 docs/           需求、契约、设计、评测报告、开发日志、trace 证据
 ```
@@ -104,6 +104,15 @@ docs/           需求、契约、设计、评测报告、开发日志、trace �
 5. [`docs/confirmation_flow.md`](docs/confirmation_flow.md) — 确认与提交流程
 6. [`docs/evaluation.md`](docs/evaluation.md) — 评测方法与结果
 7. [`docs/dev-log.md`](docs/dev-log.md) — 每一步怎么做、错在哪
+
+## 开发方式与过程证据
+
+本项目以 AI 辅助编码完成，本人负责契约、指令、审查与验收。
+
+- 缺陷台账：[docs/defect-ledger.md](docs/defect-ledger.md)（13 条已记录问题（11 条缺陷 + 2 条设计取舍））
+- 协作方法：[docs/ai-collaboration.md](docs/ai-collaboration.md)
+- 里程碑指标：[docs/metrics.md](docs/metrics.md)
+- 逐日记录：[docs/dev-log.md](docs/dev-log.md)
 
 ## 已知局限
 

@@ -11,6 +11,9 @@
 | 5 | [confirmation_flow.md](confirmation_flow.md) | 确认与提交状态机、事务边界、幂等 |
 | 6 | [evaluation.md](evaluation.md) | 10 案例评测方法、结果、失败分析 |
 | 7 | [dev-log.md](dev-log.md) | 每步的指令、判断、偏差与修正 |
+| 8 | [defect-ledger.md](defect-ledger.md) | 已记录缺陷、修复与预防 |
+| 9 | [ai-collaboration.md](ai-collaboration.md) | 协作链路、规则与实例 |
+| 10 | [metrics.md](metrics.md) | 各里程碑的提交数、测试数与评测 |
 
 ## 按类别
 
@@ -25,6 +28,9 @@
 | 设计 | [confirmation_flow.md](confirmation_flow.md) | 确认创建、失效、幂等、安全约束 |
 | 报告 | [evaluation.md](evaluation.md) | Agent 与基线的对比结果 |
 | 日志 | [dev-log.md](dev-log.md) | 开发过程记录 |
+| 过程 | [defect-ledger.md](defect-ledger.md) | 缺陷台账与证据 |
+| 过程 | [ai-collaboration.md](ai-collaboration.md) | AI 协作方法与实例 |
+| 过程 | [metrics.md](metrics.md) | 里程碑指标与口径 |
 | 证据 | [traces/](traces/) | 真实运行的 JSONL trace |
 
 ## 维护约定

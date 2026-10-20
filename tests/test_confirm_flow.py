@@ -124,6 +124,17 @@ class ConfirmFlowTest(unittest.TestCase):
         expires = datetime.fromisoformat(stored["expires_at"])
         self.assertEqual(expires - created, timedelta(minutes=CONFIRMATION_TTL_MINUTES))
 
+    def test_second_create_confirmation_invalidates_previous(self):
+        agent = self.agent(preview_then_text("p1", "方案。"))
+        agent.run("退 1 件")
+        first_id = agent.create_confirmation()
+        agent.create_confirmation()
+        self.assertEqual(store.get_confirmation(self.conn, first_id)["status"], "invalid")
+        pending = self.conn.execute(
+            "SELECT COUNT(*) FROM confirmations WHERE status = 'pending'"
+        ).fetchone()[0]
+        self.assertEqual(pending, 1)
+
     def test_submit_after_confirmation_creates_request_and_clears_plan(self):
         agent = self.agent(
             preview_then_text("p1", "方案。")

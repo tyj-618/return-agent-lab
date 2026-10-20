@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 
 from return_agent import store
 from return_agent.agent import Agent
+from return_agent.config import CONFIRMATION_TTL_MINUTES
 from return_agent.trace import Tracer
 
 USAGE = {"prompt_tokens": 10, "completion_tokens": 5}
@@ -121,7 +122,7 @@ class ConfirmFlowTest(unittest.TestCase):
         self.assertEqual(stored["plan_hash"], plan["plan_hash"])
         created = datetime.fromisoformat(stored["created_at"])
         expires = datetime.fromisoformat(stored["expires_at"])
-        self.assertEqual(expires - created, timedelta(minutes=10))
+        self.assertEqual(expires - created, timedelta(minutes=CONFIRMATION_TTL_MINUTES))
 
     def test_submit_after_confirmation_creates_request_and_clears_plan(self):
         agent = self.agent(

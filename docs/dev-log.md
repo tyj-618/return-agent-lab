@@ -235,3 +235,19 @@
   - 并发测试只覆盖同进程两连接，未测多进程；
   - 确认 10 分钟过期只在单测验证，未做真实等待；
   - 会话内订单数据不刷新（query_orders 一次调用后被历史复用）。
+
+### 2026-10-20 · 改进：确认有效期收敛为单一常量
+
+- **触发**：现场改动题要求把确认有效期从 10 分钟改成 30 分钟。
+- **问题**：同一个数字散落在 8 处——`agent.py` 的行为、`session.py` 的提示文案、
+  3 个测试、2 份文档、基线实现；只改行为会导致文案和测试不一致。
+- **决策**：新增 `return_agent/config.py` 的 `CONFIRMATION_TTL_MINUTES`；
+  提示文案用 f-string 从常量派生；测试引用常量而不是硬编码。
+- **改动**：`config.py`（新建）、`agent.py`、`session.py`、`baseline_fixed.py`、
+  `test_confirm_flow.py`、`test_session.py`、`test_submit.py`、
+  `docs/confirmation_flow.md`、`README.md`。
+- **验证**：【跑完测试后填】；`grep` 复查后只剩 `docs/dev-log.md` 的历史记录。
+- **可复用结论**：
+  1. 凡"用户可见文案 + 测试断言 + 文档"都出现的数字，先收敛成常量再改；
+  2. 搜同一概念要覆盖写法变体——这次 `10min` 就漏在"10 分钟 / minutes=10"之外；
+  3. 历史日志（dev-log 自己）不算待改点，记录的是当时事实。

@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 from return_agent import policy, store
+from return_agent.config import CONFIRMATION_TTL_MINUTES
 from return_agent.tools import compute_plan_hash, submit_return_request
 
 USER = "U001"
@@ -42,7 +43,7 @@ def make_confirmation(
             policy_version=policy_version or policy.POLICY_VERSION,
             plan_hash=compute_plan_hash(line, quantity),
             created_at=now.isoformat(),
-            expires_at=expires_at or (now + timedelta(minutes=10)).isoformat(),
+            expires_at=expires_at or (now + timedelta(minutes=CONFIRMATION_TTL_MINUTES)).isoformat(),
         )
     return confirmation_id
 

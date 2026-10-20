@@ -18,7 +18,7 @@
 pending_plan（执行器内存）
    │ 用户输入「确认提交」
    ▼
-confirmation(status=pending, expires_at=now+10min,
+confirmation(status=pending, expires_at=now+30min,
              user_id, plan, plan_hash, policy_version)
    │ 模型调用 submit_return_request
    ▼
@@ -81,7 +81,7 @@ submit 是写路径，存储故障统一归为 `TRANSACTION_FAILED`；`STORE_UNA
 1. 输入 `strip()` 后精确等于「确认提交」：
    - 无 `pending_plan` → 提示「当前没有可确认的方案」，不创建确认；
    - 有 → `create_confirmation()`，再交给 Agent 处理这条消息。
-2. Agent 本轮若未调用 `submit_return_request` → 提示「未提交，确认将在 10 分钟后失效」。
+2. Agent 本轮若未调用 `submit_return_request` → 提示「未提交，确认将在 30 分钟后失效」。
 3. 其他输入 → 正常对话。
 
 ## 8. 安全约束

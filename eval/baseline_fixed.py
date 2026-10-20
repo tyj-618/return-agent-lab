@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from return_agent import store, tools
+from return_agent.config import CONFIRMATION_TTL_MINUTES
 
 PREVIEW_TEXT = {
     "FORBIDDEN": "无法查询或操作该订单，请核对订单信息。",
@@ -68,7 +69,7 @@ class FixedFlow:
                     policy_version=plan["policy_version"],
                     plan_hash=plan["plan_hash"],
                     created_at=now.isoformat(),
-                    expires_at=(now + timedelta(minutes=10)).isoformat(),
+                    expires_at=(now + timedelta(minutes=CONFIRMATION_TTL_MINUTES)).isoformat(),
                 )
         except store.StoreError:
             return {"text": "暂时无法处理。", "kind": "confirm_blocked"}

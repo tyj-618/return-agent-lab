@@ -1,3 +1,6 @@
+from .config import CONFIRMATION_TTL_MINUTES
+
+
 class ChatSession:
     """CLI 与评测共用的一轮输入处理。确认和取消不交给模型决定。"""
 
@@ -30,5 +33,5 @@ class ChatSession:
         result = self.agent.run(message)
         hint = None
         if "submit_return_request" not in result["tools_used"]:
-            hint = "（未提交，确认将在 10 分钟后失效。）"
+            hint = f"（未提交，确认将在 {CONFIRMATION_TTL_MINUTES} 分钟后失效。）"
         return {"text": result["text"] or "", "kind": "confirm_created", "hint": hint}

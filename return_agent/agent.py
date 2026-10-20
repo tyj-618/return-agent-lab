@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from . import store, tools
+from .config import CONFIRMATION_TTL_MINUTES
 from .llm import LLMError
 from .tool_schemas import TOOL_SCHEMAS
 
@@ -102,7 +103,7 @@ class Agent:
                     policy_version=plan["policy_version"],
                     plan_hash=plan["plan_hash"],
                     created_at=now.isoformat(),
-                    expires_at=(now + timedelta(minutes=10)).isoformat(),
+                    expires_at=(now + timedelta(minutes=CONFIRMATION_TTL_MINUTES)).isoformat(),
                 )
         except store.StoreError:
             return None

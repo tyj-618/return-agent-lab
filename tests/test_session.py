@@ -6,6 +6,7 @@ import unittest
 
 from return_agent import policy, store
 from return_agent.agent import Agent
+from return_agent.config import CONFIRMATION_TTL_MINUTES
 from return_agent.session import ChatSession
 from return_agent.tools import compute_plan_hash
 from return_agent.trace import Tracer
@@ -99,7 +100,7 @@ class ChatSessionTest(unittest.TestCase):
         agent.pending_plan = self.valid_plan()
         resp = session.handle("  确认提交  ")
         self.assertEqual(resp["kind"], "confirm_created")
-        self.assertEqual(resp["hint"], "（未提交，确认将在 10 分钟后失效。）")
+        self.assertEqual(resp["hint"], f"（未提交，确认将在 {CONFIRMATION_TTL_MINUTES} 分钟后失效。）")
 
     def test_cancel_invalidates_confirmation(self):
         session, agent = self.session([])

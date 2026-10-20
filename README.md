@@ -1,5 +1,7 @@
 # return-agent-lab
 
+[![tests](https://github.com/tyj-618/return-agent-lab/actions/workflows/tests.yml/badge.svg)](https://github.com/tyj-618/return-agent-lab/actions/workflows/tests.yml)
+
 一个**退货申请处理 Agent**：用户用自然语言提出退货，Agent 负责澄清、查询、生成方案；系统负责身份注入、规则判定、确认绑定与事务写入。
 
 **状态**：可运行、可评测、有端到端 trace 证据。102 个测试；10 个固定案例 ×3 轮，Agent 30/30，固定流程基线 9/10。

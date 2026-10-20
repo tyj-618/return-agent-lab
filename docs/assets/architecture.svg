@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-label="return-agent-lab architecture">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#57606a"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#d1242f"/>
+    </marker>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#0969da"/>
+    </marker>
+  </defs>
+
+  <style>
+    .box   { fill:#f6f8fa; stroke:#d0d7de; stroke-width:1.5; }
+    .green { fill:#eafbf0; stroke:#2da44e; stroke-width:1.5; }
+    .blue  { fill:#eef6ff; stroke:#4a90d9; stroke-width:1.5; }
+    .warm  { fill:#fff8e6; stroke:#d4a72c; stroke-width:1.5; }
+    .red   { fill:#fff0f0; stroke:#d1242f; stroke-width:1.8; stroke-dasharray:7 5; }
+    .lbl   { font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; font-size:16px; font-weight:600; fill:#1f2328; text-anchor:middle; }
+    .sub   { font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; font-size:12px; fill:#57606a; text-anchor:middle; }
+    .edge  { stroke:#57606a; stroke-width:1.6; fill:none; marker-end:url(#arrow); }
+    .edge-red  { stroke:#d1242f; stroke-width:1.8; fill:none; stroke-dasharray:7 5; marker-end:url(#arrow-red); }
+    .edge-blue { stroke:#0969da; stroke-width:1.8; fill:none; stroke-dasharray:7 5; marker-end:url(#arrow-blue); }
+    .note  { font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; font-size:12.5px; fill:#57606a; text-anchor:middle; }
+    .note-red  { fill:#d1242f; }
+    .note-blue { fill:#0969da; }
+    .elabel { font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; font-size:12px; fill:#57606a; text-anchor:middle; }
+    .chip  { fill:#f6f8fa; stroke:#d0d7de; stroke-width:1.2; }
+    .chipt { font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; font-size:13px; fill:#1f2328; text-anchor:middle; }
+  </style>
+
+  <rect width="1200" height="720" fill="#ffffff"/>
+
+  <text x="60" y="58" style="font-family:ui-sans-serif,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:26px; font-weight:700; fill:#1f2328;">return-agent-lab</text>
+  <text x="60" y="86" style="font-family:ui-sans-serif,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:15px; fill:#57606a;">model proposes · code decides</text>
+
+  <!-- Row 1 -->
+  <rect class="box" x="60" y="130" width="170" height="64" rx="10"/>
+  <text class="lbl" x="145" y="156">User</text>
+  <text class="sub" x="145" y="176">natural language</text>
+
+  <rect class="box" x="270" y="130" width="170" height="64" rx="10"/>
+  <text class="lbl" x="355" y="156">CLI</text>
+  <text class="sub" x="355" y="176">reads 确认提交</text>
+
+  <rect class="box" x="480" y="130" width="170" height="64" rx="10"/>
+  <text class="lbl" x="565" y="156">ChatSession</text>
+  <text class="sub" x="565" y="176">confirm / cancel</text>
+
+  <rect class="green" x="690" y="130" width="170" height="64" rx="10"/>
+  <text class="lbl" x="775" y="156">Agent loop</text>
+  <text class="sub" x="775" y="176">bounded: 8 / 10 / 60s</text>
+
+  <rect class="blue" x="900" y="130" width="170" height="64" rx="10"/>
+  <text class="lbl" x="985" y="156">LLM</text>
+  <text class="sub" x="985" y="176">OpenAI-compatible</text>
+
+  <!-- Row 1 arrows -->
+  <line class="edge" x1="230" y1="162" x2="266" y2="162"/>
+  <text class="elabel" x="248" y="120">text</text>
+
+  <line class="edge" x1="440" y1="162" x2="476" y2="162"/>
+  <text class="elabel" x="458" y="120">handle()</text>
+
+  <line class="edge" x1="650" y1="162" x2="686" y2="162"/>
+  <text class="elabel" x="668" y="120">run()</text>
+
+  <line class="edge" x1="862" y1="162" x2="896" y2="162" marker-start="url(#arrow)"/>
+  <text class="elabel" x="879" y="120">tools + messages</text>
+
+  <!-- Agent to Tool layer -->
+  <path class="edge" d="M775 194 V255 H565 V326"/>
+  <text class="elabel" x="670" y="246">dispatch</text>
+
+  <!-- Row 2 -->
+  <rect class="red" x="270" y="330" width="170" height="64" rx="10"/>
+  <text class="lbl" x="355" y="356">Confirmation</text>
+  <text class="sub" x="355" y="376">30-min TTL · used / invalid</text>
+
+  <rect class="box" x="480" y="330" width="170" height="64" rx="10"/>
+  <text class="lbl" x="565" y="356">Tool layer</text>
+  <text class="sub" x="565" y="376">query · policy · preview · submit</text>
+
+  <rect class="warm" x="690" y="330" width="170" height="64" rx="10"/>
+  <text class="lbl" x="775" y="356">SQLite</text>
+  <text class="sub" x="775" y="376">orders · requests · confirmations</text>
+
+  <!-- CLI to Confirmation -->
+  <path class="edge-red" d="M355 194 V326"/>
+  <text class="elabel" x="365" y="250" style="text-anchor:start; fill:#d1242f;">确认提交时创建</text>
+
+  <!-- Confirmation to Tool -->
+  <line class="edge-blue" x1="440" y1="362" x2="476" y2="362"/>
+  <text class="elabel" x="458" y="348">注入</text>
+
+  <!-- Tool to SQLite -->
+  <line class="edge" x1="650" y1="362" x2="686" y2="362"/>
+  <text class="elabel" x="668" y="348">读写</text>
+
+  <!-- Notes -->
+  <text class="note note-red" x="355" y="432">model cannot create</text>
+  <text class="note note-blue" x="565" y="432">identity + confirmation injected</text>
+  <text class="note" x="775" y="432">single transaction · idempotent</text>
+
+  <!-- Chips -->
+  <rect class="chip" x="60" y="500" width="150" height="38" rx="19"/>
+  <text class="chipt" x="135" y="524">4 tools</text>
+
+  <rect class="chip" x="230" y="500" width="230" height="38" rx="19"/>
+  <text class="chipt" x="345" y="524">8 turns / 10 calls / 60s</text>
+
+  <rect class="chip" x="480" y="500" width="480" height="38" rx="19"/>
+  <text class="chipt" x="720" y="524">JSONL trace: user · model · tool · assistant · stop</text>
+
+  <!-- Legend -->
+  <line x1="60" y1="600" x2="110" y2="600" stroke="#d1242f" stroke-width="1.8" stroke-dasharray="7 5"/>
+  <text x="122" y="604" style="font-family:ui-sans-serif,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12.5px; fill:#57606a;">confirmation is created by CLI only</text>
+
+  <line x1="480" y1="600" x2="530" y2="600" stroke="#0969da" stroke-width="1.8" stroke-dasharray="7 5"/>
+  <text x="542" y="604" style="font-family:ui-sans-serif,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12.5px; fill:#57606a;">executor injects; model never sees it</text>
+
+  <text x="60" y="680" style="font-family:ui-sans-serif,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; fill:#8b949e;">github.com/tyj-618/return-agent-lab</text>
+</svg>
